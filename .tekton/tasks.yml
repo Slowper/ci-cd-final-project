@@ -1,8 +1,10 @@
+---
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: cleanup
 spec:
+  description: This task will clean up a workspace by deleting all the files.
   workspaces:
     - name: source
   steps:
@@ -19,40 +21,53 @@ spec:
         #!/usr/bin/env sh
         set -eu
         echo "Removing all files from ${WORKSPACE_SOURCE_PATH} ..."
+        
+        # Ensure the workspace path is not empty or root before deleting
         if [ -d "${WORKSPACE_SOURCE_PATH}" ] ; then
+          # Delete non-hidden files and directories
           rm -rf "${WORKSPACE_SOURCE_PATH:?}"/*
+          # Delete files and directories starting with . but excluding ..
           rm -rf "${WORKSPACE_SOURCE_PATH}"/.[!.]*
+          # Delete files and directories starting with .. plus any other character
           rm -rf "${WORKSPACE_SOURCE_PATH}"/..?*
         fi
-
+---
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: nose
 spec:
+  description: This task runs unit tests using Nose.
   workspaces:
     - name: source
   params:
     - name: args
-      description: Arguments to pass to nose
+      description: Arguments to pass to Nose.
       type: string
       default: "-v"
   steps:
     - name: nosetests
       image: python:3.9-slim
-      workingDir: $(workspaces.source.path)  # This ensures it runs in the correct directory
+      workingDir: $(workspaces.source.path)
       script: |
         #!/bin/bash
         set -e
-        echo "🔹 Checking if requirements.txt exists..."
-        if [ -f "requirements.txt" ]; then
-          python -m pip install --upgrade pip wheel
+
+        echo "Installing dependencies..."
+        python -m pip install --upgrade pip wheel
+        if [ -f requirements.txt ]; then
           pip install -r requirements.txt
         else
-          echo "⚠️ WARNING: requirements.txt not found, skipping dependencies installation."
+          echo "WARNING: requirements.txt not found, skipping dependencies installation."
         fi
+
+        echo "Installing Nose testing framework..."
+        pip install nose
+
+        echo "Running Nose tests..."
         nosetests $(params.args)
+
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
