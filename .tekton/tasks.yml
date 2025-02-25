@@ -41,14 +41,18 @@ spec:
   steps:
     - name: nosetests
       image: python:3.9-slim
-      workingDir: $(workspaces.source.path)
+      workingDir: $(workspaces.source.path)  # This ensures it runs in the correct directory
       script: |
         #!/bin/bash
         set -e
-        python -m pip install --upgrade pip wheel
-        pip install -r requirements.txt
+        echo "🔹 Checking if requirements.txt exists..."
+        if [ -f "requirements.txt" ]; then
+          python -m pip install --upgrade pip wheel
+          pip install -r requirements.txt
+        else
+          echo "⚠️ WARNING: requirements.txt not found, skipping dependencies installation."
+        fi
         nosetests $(params.args)
-
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
