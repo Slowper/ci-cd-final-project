@@ -34,21 +34,32 @@ spec:
     - name: source
   params:
     - name: args
-      description: Arguments to pass to nose
+      description: Arguments to pass to Nose
       type: string
       default: "-v"
   steps:
     - name: nosetests
       image: python:3.9-slim
-      workingDir: $(workspaces.source.path)
+      workingDir: /workspace/source
       script: |
         #!/bin/bash
         set -e
-        python -m pip install --upgrade pip wheel
-        if [ -f requirements.txt ]; then
-          pip install -r requirements.txt
-        else
-          echo "WARNING: requirements.txt not found, skipping dependencies installation."
+        echo "Checking if requirements.txt exists..."
+        if [ ! -f requirements.txt ]; then
+          echo "ERROR: requirements.txt not found in /workspace/source"
+          ls -l /workspace/source
+          exit 1
         fi
+        
+        echo "Installing dependencies..."
+        python -m pip install --upgrade pip wheel
+        pip install -r requirements.txt
+        
         echo "Running Nose tests..."
+        if ! command -v nosetests &> /dev/null
+        then
+          echo "ERROR: nosetests command not found."
+          exit 1
+        fi
+        
         nosetests $(params.args)
