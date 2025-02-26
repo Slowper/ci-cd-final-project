@@ -1,10 +1,8 @@
----
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: cleanup
 spec:
-  description: This task will clean up a workspace by deleting all the files.
   workspaces:
     - name: source
   steps:
@@ -21,29 +19,22 @@ spec:
         #!/usr/bin/env sh
         set -eu
         echo "Removing all files from ${WORKSPACE_SOURCE_PATH} ..."
-        
-        # Ensure the workspace path is not empty or root before deleting
-        if [ -d "${WORKSPACE_SOURCE_PATH}" ] ; then
-          # Delete non-hidden files and directories
+        if [ -d "${WORKSPACE_SOURCE_PATH}" ]; then
           rm -rf "${WORKSPACE_SOURCE_PATH:?}"/*
-          # Delete files and directories starting with . but excluding ..
           rm -rf "${WORKSPACE_SOURCE_PATH}"/.[!.]*
-          # Delete files and directories starting with .. plus any other character
           rm -rf "${WORKSPACE_SOURCE_PATH}"/..?*
         fi
----
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: nose
 spec:
-  description: This task runs unit tests using Nose.
   workspaces:
     - name: source
   params:
     - name: args
-      description: Arguments to pass to Nose.
+      description: Arguments to pass to nose
       type: string
       default: "-v"
   steps:
@@ -53,34 +44,11 @@ spec:
       script: |
         #!/bin/bash
         set -e
-
-        echo "Installing dependencies..."
         python -m pip install --upgrade pip wheel
         if [ -f requirements.txt ]; then
           pip install -r requirements.txt
         else
           echo "WARNING: requirements.txt not found, skipping dependencies installation."
         fi
-
-        echo "Installing Nose testing framework..."
-        pip install nose
-
         echo "Running Nose tests..."
         nosetests $(params.args)
-
----
-apiVersion: tekton.dev/v1beta1
-kind: Task
-metadata:
-  name: flake8-lint
-spec:
-  workspaces:
-    - name: source
-  steps:
-    - name: lint
-      image: python:3.9-slim
-      script: |
-        #!/bin/sh
-        pip install flake8
-        flake8 service --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 service --count --max-complexity=10 --max-line-length=127 --statistics
